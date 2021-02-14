@@ -13,9 +13,10 @@ import json
 from googleapiclient.discovery import build
 # from classes import Statement
 
-#-----CLASS AREA-------
+# -----CLASS AREA-------
 
-class Statement:        
+
+class Statement:
     def check(self, message):
         global connection
         chat_id = message.chat.id
@@ -24,33 +25,71 @@ class Statement:
         cursor.execute(sql)
         res = cursor.fetchone()[0]
         return res
-    
+
     def upload(self, message, value):
         global connection
         chat_id = message.chat.id
-        sql = "UPDATE `temp` SET `statement` = " + str(value) + " WHERE `id` = " + str(chat_id)
+        sql = "UPDATE `temp` SET `statement` = " + \
+            str(value) + " WHERE `id` = " + str(chat_id)
         cursor.execute(sql)
         connection.commit()
-       
+
     def reset(self, message):
         global connection
         chat_id = message.chat.id
-        sql = "UPDATE `temp` SET `statement` = 0, `level` = -1, `data_array` = '' WHERE `id` = " + str(chat_id)
+        sql = "UPDATE `temp` SET `statement` = 0, `level` = -1, `data_array` = '' WHERE `id` = " + \
+            str(chat_id)
         cursor.execute(sql)
         connection.commit()
-        
+
     def motion(self, statement, message):
         if(statement == 0):
             motion.free(message)
         elif(statement == 1):
             motion.collect(message)
-            
+
+
 class Motion:
     def free(self, message):
         bsm(message, "Нечего делать")
+
     def collect(self, message):
-        pprint(level.check(message))   
-            
+        if(level.check(message) == -1):
+            bsm(message, config['Bot']['start_new_reply_text'])
+            data_array = []
+            for i in range(table.feild_amount):
+                data_array.append("?")
+            data_array = str("#".join(data_array))
+            data_array_obj.upload(message, data_array)
+            level.upload(message, level.check(message) + 1)
+            bsm(message, "Введите знач " + str(level.check(message)))
+        else:
+            data_array = data_array_obj.get(message)  # получаем str
+            data_array = data_array.split("#")  # делим на массив
+            data_array[level.check(message)] = message.text  # заменяем
+            data_array = str("#".join(data_array))  # собираем
+            data_array_obj.upload(message, data_array)  # отправляем
+            level.upload(message, level.check(message) + 1)
+            bsm(message, "Введите знач " + str(level.check(message)))
+        if(level.check(message) == table.feild_amount):
+            data_array = data_array_obj.get(message)
+            data_array = data_array.split("#")
+            value_range_body = {
+                "values": [
+                    data_array
+                ]
+            }
+            request = service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range='Лист1!A1:E1',
+            valueInputOption='USER_ENTERED',
+            body=value_range_body,
+            )
+            response = request.execute()
+            pprint(response)
+            bsm(message, "Отправляем массив")  
+            statement.reset(message) 
+
 class Level:
     def check(self, message):
         global connection
@@ -59,10 +98,50 @@ class Level:
         sql = "SELECT `level` FROM `temp` WHERE `id` = " + str(chat_id)
         cursor.execute(sql)
         res = cursor.fetchone()[0]
-        return res  
-            
-#-----END CLASS AREA-------
-    
+        return res
+
+    def upload(self, message, value):
+        global connection
+        chat_id = message.chat.id
+        sql = "UPDATE `temp` SET `level` = " + \
+            str(value) + " WHERE `id` = " + str(chat_id)
+        cursor.execute(sql)
+        connection.commit()
+
+
+class Data_Array:
+    def get(self, message):
+        global connection
+        chat_id = message.chat.id
+        connection.commit()
+        sql = "SELECT `data_array` FROM `temp` WHERE `id` = " + str(chat_id)
+        cursor.execute(sql)
+        res = cursor.fetchone()[0]
+        return res
+
+    def upload(self, message, value):
+        global connection
+        chat_id = message.chat.id
+        sql = "UPDATE `temp` SET `data_array` = '" + \
+            str(value) + "' WHERE `id` = " + str(chat_id)
+        cursor.execute(sql)
+        connection.commit()
+
+    def erase(self, message):
+        global connection
+        chat_id = message.chat.id
+        sql = "UPDATE `temp` SET `data_array` = '' WHERE `id` = " + \
+            str(chat_id)
+        cursor.execute(sql)
+        connection.commit()
+
+
+class Table:
+    def __init__(self, field_amount):
+        self.feild_amount = field_amount
+
+# -----END CLASS AREA-------
+
 
 config = configparser.ConfigParser()
 config.read("settings.ini")
@@ -82,11 +161,11 @@ service = build('sheets', 'v4', http=httpAuth)
 
 global connection
 connection = pymysql.connect(
-    host= config['SQL']['host'],
-    user= config['SQL']['user'],
-    password= config['SQL']['password'],
-    charset= config['SQL']['charset'],
-    db= config['SQL']['db'],
+    host=config['SQL']['host'],
+    user=config['SQL']['user'],
+    password=config['SQL']['password'],
+    charset=config['SQL']['charset'],
+    db=config['SQL']['db'],
 )
 
 cursor = connection.cursor()
@@ -97,18 +176,24 @@ if connection.open != 1:
     sys.exit()
 else:
     print("SQL connected sucsessfully")
-    
+
+
 def bsm(message, value):
     bot.send_message(message.chat.id, value)
-    
+
+
 @bot.message_handler(commands=['help'])
 def help_reaction(message):
     bot.send_message(message.chat.id, config['Bot']['help_reply_text'])
-    
-statement = Statement() 
+
+
+statement = Statement()
 motion = Motion()
 level = Level()
-    
+data_array_obj = Data_Array()
+table = Table(5)
+
+
 @bot.message_handler(commands=['start'])
 def user_registration(message):
     chat_id = message.chat.id
@@ -121,11 +206,12 @@ def user_registration(message):
         chat_name = str(message.chat.first_name)
         chat_lastname = str(message.chat.last_name)
         sql = "INSERT INTO `temp` (`id`, `username`, `name`, `lastname`, `statement`, `level`, `data_array`) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-        cursor.execute(sql, (chat_id, chat_username, chat_name, chat_lastname, 0, -1, ""))
+        cursor.execute(sql, (chat_id, chat_username,
+                             chat_name, chat_lastname, 0, -1, ""))
         connection.commit()
     bot.send_message(message.chat.id, config['Bot']['start_reply_text'])
-    
-    
+
+
 @bot.message_handler(commands=['new'])
 def new_reaction(message):
     if(statement.check(message) == 0):
@@ -134,10 +220,11 @@ def new_reaction(message):
     else:
         statement.reset(message)
         bsm(message, config['Bot']['break_reply_text'])
-        
-        
+
+
 @bot.message_handler(content_types=['text'])
 def text_reaction(message):
-    statement.motion(statement.check(message), message)   
-        
+    statement.motion(statement.check(message), message)
+
+
 bot.polling()
