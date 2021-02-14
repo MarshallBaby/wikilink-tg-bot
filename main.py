@@ -28,3 +28,44 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(
 httpAuth = credentials.authorize(httplib2.Http())
 service = build('sheets', 'v4', http=httpAuth)
 
+connection = pymysql.connect(
+    host= config['SQL']['host'],
+    user= config['SQL']['user'],
+    password= config['SQL']['password'],
+    charset= config['SQL']['charset'],
+    db= config['SQL']['db'],
+)
+
+cursor = connection.cursor()
+
+# SQL проверка подключения
+if connection.open != 1:
+    print("SQL connection ERROR")
+    sys.exit()
+else:
+    print("SQL connected sucsessfully")
+    
+def bsm(message, value):
+    bot.send_message(message.chat.id, value)
+    
+@bot.message_handler(commands=['help'])
+def help_reaction(message):
+    bot.send_message(message.chat.id, config['Bot']['help_reply_text'])
+    
+@bot.message_handler(commands=['start'])
+def user_registration(message):
+    chat_id = message.chat.id
+    sql = "SELECT * FROM `temp` WHERE `id` = " + \
+        str(message.chat.id)
+    cursor.execute(sql)
+    res = cursor.fetchall()
+    if (res == ()):
+        chat_username = message.chat.username
+        chat_name = str(message.chat.first_name)
+        chat_lastname = str(message.chat.last_name)
+        sql = "INSERT INTO `temp` (`id`, `username`, `name`, `lastname`, `statement`, `level`, `data_array`) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        cursor.execute(sql, (chat_id, chat_username, chat_name, chat_lastname, -1, -1, ""))
+        connection.commit()
+    bot.send_message(message.chat.id, config['Bot']['start_reply_text'])
+    
+bot.polling()
