@@ -70,7 +70,8 @@ class Motion:
             data_array = str("#".join(data_array))  # собираем
             data_array_obj.upload(message, data_array)  # отправляем
             level.upload(message, level.check(message) + 1)
-            bsm(message, "Введите знач " + str(level.check(message)))
+            if(level.check(message) != table.feild_amount):
+                bsm(message, "Введите знач " + str(level.check(message)))
         if(level.check(message) == table.feild_amount):
             data_array = data_array_obj.get(message)
             data_array = data_array.split("#")
@@ -181,6 +182,9 @@ else:
 def bsm(message, value):
     bot.send_message(message.chat.id, value)
 
+def text_checker(message):
+    return message.text.find('#')
+
 
 @bot.message_handler(commands=['help'])
 def help_reaction(message):
@@ -224,7 +228,10 @@ def new_reaction(message):
 
 @bot.message_handler(content_types=['text'])
 def text_reaction(message):
-    statement.motion(statement.check(message), message)
+    if(text_checker(message) == -1):
+        statement.motion(statement.check(message), message)
+    else:
+        bsm(message, config['Bot']['sharp_error_reply_text'])
 
 
 bot.polling()
