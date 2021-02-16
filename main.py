@@ -10,14 +10,12 @@ import telebot
 import configparser
 import pymysql
 import json
-import calendar
 from datetime import date
 from googleapiclient.discovery import build
 # from classes import Statement
 
 # -----CLASS AREA-------
 
-time = calendar.Calendar(firstweekday=0)
 
 class Statement:
     def check(self, message):
@@ -158,7 +156,7 @@ bot = telebot.TeleBot(config['Telegram']['token'])
 
 CREDENTIALS_FILE = 'wikilink-tg-bot-9b4dfdea490b.json'
 # ID Google Sheets документа (можно взять из его URL)
-spreadsheet_id = '1dJ2D_D5UqK-UOufyqApOPam3SLOWyCJ1CxQOZUZIAHU'
+spreadsheet_id = config['Google']['spreadsheet_id']
 
 # Авторизуемся и получаем service — экземпляр доступа к API
 credentials = ServiceAccountCredentials.from_json_keyfile_name(
@@ -167,6 +165,14 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(
      'https://www.googleapis.com/auth/drive'])
 httpAuth = credentials.authorize(httplib2.Http())
 service = build('sheets', 'v4', http=httpAuth)
+
+result = service.spreadsheets().values().get(
+    spreadsheetId=spreadsheet_id,
+    range = 'Лист1!A1:Z1',
+    # dateTimeRenderOption = 'FORMATTED_STRING',
+    # majorDimension = 'DIMENTION_UNSPECIFIED'
+    ).execute()
+rows = result.get('values', [])
 
 global connection
 connection = pymysql.connect(
@@ -203,7 +209,7 @@ statement = Statement()
 motion = Motion()
 level = Level()
 data_array_obj = Data_Array()
-table = Table(5)
+table = Table(len(rows[0]))
 
 
 @bot.message_handler(commands=['start'])
