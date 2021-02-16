@@ -10,11 +10,14 @@ import telebot
 import configparser
 import pymysql
 import json
+import calendar
+from datetime import date
 from googleapiclient.discovery import build
 # from classes import Statement
 
 # -----CLASS AREA-------
 
+time = calendar.Calendar(firstweekday=0)
 
 class Statement:
     def check(self, message):
@@ -47,6 +50,8 @@ class Statement:
             motion.free(message)
         elif(statement == 1):
             motion.collect(message)
+        elif(statement == 2):
+            motion.readbydate(message)
 
 
 class Motion:
@@ -87,9 +92,10 @@ class Motion:
             body=value_range_body,
             )
             response = request.execute()
-            pprint(response)
             bsm(message, "Отправляем массив")  
             statement.reset(message) 
+    def readbydate(self, message):
+        bsm(message, date.today().strftime("%d.%m.%Y"))        
 
 class Level:
     def check(self, message):
@@ -142,6 +148,8 @@ class Table:
         self.feild_amount = field_amount
 
 # -----END CLASS AREA-------
+
+
 
 
 config = configparser.ConfigParser()
@@ -224,6 +232,15 @@ def new_reaction(message):
     else:
         statement.reset(message)
         bsm(message, config['Bot']['break_reply_text'])
+
+@bot.message_handler(commands=['today'])
+def new_reaction(message):
+    if(statement.check(message) == 0):
+        statement.upload(message, 2)
+        statement.motion(statement.check(message), message)
+    else:
+        statement.reset(message)
+        bsm(message, config['Bot']['break_reply_text'])        
 
 
 @bot.message_handler(content_types=['text'])
