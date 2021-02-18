@@ -149,12 +149,24 @@ class Motion:
                         + config['Google']['last_column_char'] + str(i + 2)
                     rows_array.append(row)
             pprint(rows_array)
-            request = service.spreadsheets().values().batchGet(
-                spreadsheetId=spreadsheet_id,
-                ranges = rows_array,
-                majorDimension = "COLUMNS"
-            ).execute() 
-            pprint(request)
+            if(len(rows_array)):
+                request = service.spreadsheets().values().batchGet(
+                    spreadsheetId=spreadsheet_id,
+                    ranges = rows_array,
+                    majorDimension = "COLUMNS"
+                ).execute() 
+                # pprint(request)
+                value = request.get('valueRanges')
+                for i in range(len(value)):
+                    value_temp = value[i].get('values')
+                    pprint(len(value_temp))
+                    reply = ""
+                    for l in range(len(value_temp)):
+                        reply = reply + str(value_temp[l][0]) + " " + "\n"
+                    bsm(message, reply)
+            else:
+                bsm(message, "No match")    
+            
             statement.reset(message)
 
 
