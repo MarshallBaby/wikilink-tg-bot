@@ -94,16 +94,36 @@ class Motion:
             statement.reset(message)
 
     def readbydate(self, message):
+        global agent_field_num
         if(level.check(message) == -1):
             bsm(message, config['Bot']['choose_your_fighter_reply'])
             level.upload(message, level.check(message) + 1)
         else:
             agent_name = message.text
-            request = service.spreadsheets().values().get(
-                
-                ).execute()
-            values = request.get("values")
-            pprint(values[1][3])
+            request_body = {
+                "dataFilters": [
+                    {
+                        "gridRange": {
+                            "sheetId": 0,
+                            "startColumnIndex": 1,
+                            "endColumnIndex": 2,
+                            "startRowIndex": 1
+                        }
+                    }
+                ],
+                "majorDimension": "COLUMNS",
+                "valueRenderOption": "FORMATTED_VALUE"
+            }
+            request = service.spreadsheets().values().batchGetByDataFilter(
+                spreadsheetId=spreadsheet_id,
+                body=request_body,
+
+            ).execute()
+            values = request.get("valueRanges")
+            values = values[0]
+            values = values.get('valueRange')
+            values = values.get('values')[0]
+            pprint(values)
             statement.reset(message)
 
 
@@ -183,7 +203,7 @@ result = service.spreadsheets().values().get(
     # majorDimension = 'DIMENTION_UNSPECIFIED'
 ).execute()
 rows = result.get('values', [])
-pprint(len(rows[0]))
+# -----Получаем номера полей-------
 global agent_field_num
 global date_table_num
 
