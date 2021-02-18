@@ -142,10 +142,19 @@ class Motion:
             ).execute()
             date_array = request.get("valueRanges")[0].get('valueRange').get('values')[0]
             pprint(date_array)
-            
+            rows_array = []
             for i in range(len(agent_array)):
                 if(date_array[i] == str(date.today().strftime("%d.%m.%Y")) and agent_array[i] == message.text):
-                    pprint("Match!")
+                    row = config['Google']['sheet_name'] + "!" + "A" + str(i + 2) + ":" \
+                        + config['Google']['last_column_char'] + str(i + 2)
+                    rows_array.append(row)
+            pprint(rows_array)
+            request = service.spreadsheets().values().batchGet(
+                spreadsheetId=spreadsheet_id,
+                ranges = rows_array,
+                majorDimension = "COLUMNS"
+            ).execute() 
+            pprint(request)
             statement.reset(message)
 
 
