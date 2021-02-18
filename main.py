@@ -100,13 +100,15 @@ class Motion:
             bsm(message, config['Bot']['choose_your_fighter_reply'])
             level.upload(message, level.check(message) + 1)
         else:
-            bsm(message, config['Bot']['loading'])
-            sql = "SELECT `name` FROM `users` WHERE `id` = " + str(message.chat.id)
+            sql = "SELECT `name` FROM `users` WHERE `id` = " + \
+                str(message.chat.id)
             cursor.execute(sql)
             if(cursor.rowcount == 0):
                 bsm(message, config['Bot']['no_agent_reply'])
                 bsm(message, config['Bot']['access_denied'])
+                statement.reset(message)
                 return
+            bsm(message, config['Bot']['loading'])
             agent_name = str(cursor.fetchone()[0])
             request = service.spreadsheets().values().get(
                 spreadsheetId=spreadsheet_id,
@@ -176,7 +178,9 @@ class Motion:
                     pprint(len(value_temp))
                     reply = str(i + 1) + "\n\n"
                     for l in range(len(value_temp)):
-                        reply = reply + str(titles[l]) + ": " + str(value_temp[l][0]) + " " + "\n"
+                        reply = reply + \
+                            str(titles[l]) + ": " + \
+                            str(value_temp[l][0]) + " " + "\n"
                     bsm(message, reply)
             else:
                 bsm(message, "No match")
@@ -258,7 +262,6 @@ result = service.spreadsheets().values().get(
     range='Лист1!A1:Z1',
 ).execute()
 rows = result.get('values', [])
-pprint(rows)
 # -----Получаем номера полей-------
 global agent_field_num
 global date_table_num
@@ -296,8 +299,28 @@ def text_checker(message):
     return message.text.find('#')
 
 
+def user_checker(message):
+    connection.commit()
+    sql = "SELECT `username` FROM `temp` WHERE `id` = " + str(message.chat.id)
+    cursor.execute(sql)
+    if(cursor.rowcount == 0):
+        bsm(message, config['Bot']['use_start_reply'])
+        return 0
+    
+def access_ckecker(message):
+    connection.commit()
+    sql = "SELECT `access` FROM `temp` WHERE `id` = " + str(message.chat.id)
+    cursor.execute(sql)
+    access = cursor.fetchone()[0]
+    if(int(access) == 0):
+        bsm(message, config['Bot']['access_denied'])
+    return int(access)
+
+
 @bot.message_handler(commands=['help'])
 def help_reaction(message):
+    if(user_checker(message) == 0):
+        return
     bot.send_message(message.chat.id, config['Bot']['help_reply_text'])
 
 
@@ -328,6 +351,8 @@ def user_registration(message):
 
 # @bot.message_handler(commands=['new'])
 # def new_reaction(message):
+    #   if(user_checker(message) == 0):
+    #     return
 #     if(statement.check(message) == 0):
 #         statement.upload(message, 1)
 #         statement.motion(statement.check(message), message)
@@ -335,8 +360,13 @@ def user_registration(message):
 #         statement.reset(message)
 #         bsm(message, config['Bot']['break_reply_text'])
 
+
 @bot.message_handler(commands=['today'])
 def new_reaction(message):
+    if(user_checker(message) == 0):
+        return
+    elif(access_ckecker(message) == 0):
+        return
     if(statement.check(message) == 0):
         statement.upload(message, 2)
         statement.motion(statement.check(message), message)
@@ -347,6 +377,8 @@ def new_reaction(message):
 
 @bot.message_handler(content_types=['text'])
 def text_reaction(message):
+    if(user_checker(message) == 0):
+        return
     if(text_checker(message) == -1):
         statement.motion(statement.check(message), message)
     else:
