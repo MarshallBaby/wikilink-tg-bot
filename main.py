@@ -136,7 +136,7 @@ class Motion:
             ).execute()
             agent_array = request.get("valueRanges")[0].get(
                 'valueRange').get('values')[0]
-            pprint(agent_array)
+            # pprint(agent_array)
             request_body = {
                 "dataFilters": [
                     {
@@ -157,14 +157,14 @@ class Motion:
             ).execute()
             date_array = request.get("valueRanges")[0].get(
                 'valueRange').get('values')[0]
-            pprint(date_array)
+            # pprint(date_array)
             rows_array = []
             for i in range(len(agent_array)):
                 if(date_array[i] == str(date.today().strftime("%d.%m.%Y")) and agent_array[i] == agent_name):
                     row = config['Google']['sheet_name'] + "!" + "A" + str(i + 2) + ":" \
                         + config['Google']['last_column_char'] + str(i + 2)
                     rows_array.append(row)
-            pprint(rows_array)
+            # pprint(rows_array)
             if(len(rows_array)):
                 request = service.spreadsheets().values().batchGet(
                     spreadsheetId=spreadsheet_id,
@@ -175,7 +175,7 @@ class Motion:
                 value = request.get('valueRanges')
                 for i in range(len(value)):
                     value_temp = value[i].get('values')
-                    pprint(len(value_temp))
+                    # pprint(len(value_temp))
                     reply = str(i + 1) + "\n\n"
                     for l in range(len(value_temp)):
                         reply = reply + \
@@ -183,7 +183,7 @@ class Motion:
                             str(value_temp[l][0]) + " " + "\n"
                     bsm(message, reply)
             else:
-                bsm(message, "No match")
+                bsm(message, config['Bot']['no_match_reply'])
 
             statement.reset(message)
 
