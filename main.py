@@ -104,9 +104,9 @@ class Motion:
                 "dataFilters": [
                     {
                         "gridRange": {
-                            "sheetId": 0,
-                            "startColumnIndex": 1,
-                            "endColumnIndex": 2,
+                            "sheetId": int(config['Google']['sheet_id']),
+                            "startColumnIndex": agent_field_num,
+                            "endColumnIndex": agent_field_num + 1,
                             "startRowIndex": 1
                         }
                     }
@@ -119,11 +119,33 @@ class Motion:
                 body=request_body,
 
             ).execute()
-            values = request.get("valueRanges")
-            values = values[0]
-            values = values.get('valueRange')
-            values = values.get('values')[0]
-            pprint(values)
+            agent_array = request.get("valueRanges")[0].get('valueRange').get('values')[0]
+            pprint(agent_array)
+            request_body = {
+                "dataFilters": [
+                    {
+                        "gridRange": {
+                            "sheetId": int(config['Google']['sheet_id']),
+                            "startColumnIndex": date_table_num,
+                            "endColumnIndex": date_table_num + 1,
+                            "startRowIndex": 1
+                        }
+                    }
+                ],
+                "majorDimension": "COLUMNS",
+                "valueRenderOption": "FORMATTED_VALUE"
+            }
+            request = service.spreadsheets().values().batchGetByDataFilter(
+                spreadsheetId=spreadsheet_id,
+                body=request_body,
+
+            ).execute()
+            date_array = request.get("valueRanges")[0].get('valueRange').get('values')[0]
+            pprint(date_array)
+            
+            for i in range(len(agent_array)):
+                if(date_array[i] == str(date.today().strftime("%d.%m.%Y")) and agent_array[i] == message.text):
+                    pprint("Match!")
             statement.reset(message)
 
 
