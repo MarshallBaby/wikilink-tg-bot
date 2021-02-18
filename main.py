@@ -84,16 +84,28 @@ class Motion:
                 ]
             }
             request = service.spreadsheets().values().append(
-            spreadsheetId=spreadsheet_id,
-            range='Лист1!A1:E1',
-            valueInputOption='USER_ENTERED',
-            body=value_range_body,
+                spreadsheetId=spreadsheet_id,
+                range='Лист1!A1:E1',
+                valueInputOption='USER_ENTERED',
+                body=value_range_body,
             )
             response = request.execute()
-            bsm(message, "Отправляем массив")  
-            statement.reset(message) 
+            bsm(message, "Отправляем массив")
+            statement.reset(message)
+
     def readbydate(self, message):
-        bsm(message, date.today().strftime("%d.%m.%Y"))        
+        if(level.check(message) == -1):
+            bsm(message, config['Bot']['choose_your_fighter_reply'])
+            level.upload(message, level.check(message) + 1)
+        else:
+            agent_name = message.text
+            request = service.spreadsheets().values().get(
+                
+                ).execute()
+            values = request.get("values")
+            pprint(values[1][3])
+            statement.reset(message)
+
 
 class Level:
     def check(self, message):
@@ -148,8 +160,6 @@ class Table:
 # -----END CLASS AREA-------
 
 
-
-
 config = configparser.ConfigParser()
 config.read("settings.ini")
 bot = telebot.TeleBot(config['Telegram']['token'])
@@ -168,11 +178,20 @@ service = build('sheets', 'v4', http=httpAuth)
 
 result = service.spreadsheets().values().get(
     spreadsheetId=spreadsheet_id,
-    range = 'Лист1!A1:Z1',
+    range='Лист1!A1:Z1',
     # dateTimeRenderOption = 'FORMATTED_STRING',
     # majorDimension = 'DIMENTION_UNSPECIFIED'
-    ).execute()
+).execute()
 rows = result.get('values', [])
+pprint(len(rows[0]))
+global agent_field_num
+global date_table_num
+
+for i in range(len(rows[0])):
+    if(str(rows[0][i]) == config['Google']['alent_table_name']):
+        agent_field_num = i
+    elif(str(rows[0][i]) == config['Google']['date_table_name']):
+        date_table_num = i
 
 global connection
 connection = pymysql.connect(
@@ -195,6 +214,7 @@ else:
 
 def bsm(message, value):
     bot.send_message(message.chat.id, value)
+
 
 def text_checker(message):
     return message.text.find('#')
@@ -230,14 +250,14 @@ def user_registration(message):
     bot.send_message(message.chat.id, config['Bot']['start_reply_text'])
 
 
-@bot.message_handler(commands=['new'])
-def new_reaction(message):
-    if(statement.check(message) == 0):
-        statement.upload(message, 1)
-        statement.motion(statement.check(message), message)
-    else:
-        statement.reset(message)
-        bsm(message, config['Bot']['break_reply_text'])
+# @bot.message_handler(commands=['new'])
+# def new_reaction(message):
+#     if(statement.check(message) == 0):
+#         statement.upload(message, 1)
+#         statement.motion(statement.check(message), message)
+#     else:
+#         statement.reset(message)
+#         bsm(message, config['Bot']['break_reply_text'])
 
 @bot.message_handler(commands=['today'])
 def new_reaction(message):
@@ -246,7 +266,7 @@ def new_reaction(message):
         statement.motion(statement.check(message), message)
     else:
         statement.reset(message)
-        bsm(message, config['Bot']['break_reply_text'])        
+        bsm(message, config['Bot']['break_reply_text'])
 
 
 @bot.message_handler(content_types=['text'])
