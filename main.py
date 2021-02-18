@@ -95,11 +95,24 @@ class Motion:
 
     def readbydate(self, message):
         global agent_field_num
+        level.upload(message, level.check(message) + 1)
         if(level.check(message) == -1):
             bsm(message, config['Bot']['choose_your_fighter_reply'])
             level.upload(message, level.check(message) + 1)
         else:
-            agent_name = message.text
+            bsm(message, config['Bot']['loading'])
+            sql = "SELECT `name` FROM `users` WHERE `id` = " + str(message.chat.id)
+            cursor.execute(sql)
+            if(cursor.rowcount == 0):
+                bsm(message, config['Bot']['no_agent_reply'])
+                bsm(message, config['Bot']['access_denied'])
+                return
+            agent_name = str(cursor.fetchone()[0])
+            request = service.spreadsheets().values().get(
+                spreadsheetId=spreadsheet_id,
+                range='Лист1!A1:Z1',
+            ).execute()
+            titles = request.get('values', [])[0]
             request_body = {
                 "dataFilters": [
                     {
@@ -119,7 +132,8 @@ class Motion:
                 body=request_body,
 
             ).execute()
-            agent_array = request.get("valueRanges")[0].get('valueRange').get('values')[0]
+            agent_array = request.get("valueRanges")[0].get(
+                'valueRange').get('values')[0]
             pprint(agent_array)
             request_body = {
                 "dataFilters": [
@@ -138,13 +152,13 @@ class Motion:
             request = service.spreadsheets().values().batchGetByDataFilter(
                 spreadsheetId=spreadsheet_id,
                 body=request_body,
-
             ).execute()
-            date_array = request.get("valueRanges")[0].get('valueRange').get('values')[0]
+            date_array = request.get("valueRanges")[0].get(
+                'valueRange').get('values')[0]
             pprint(date_array)
             rows_array = []
             for i in range(len(agent_array)):
-                if(date_array[i] == str(date.today().strftime("%d.%m.%Y")) and agent_array[i] == message.text):
+                if(date_array[i] == str(date.today().strftime("%d.%m.%Y")) and agent_array[i] == agent_name):
                     row = config['Google']['sheet_name'] + "!" + "A" + str(i + 2) + ":" \
                         + config['Google']['last_column_char'] + str(i + 2)
                     rows_array.append(row)
@@ -152,21 +166,21 @@ class Motion:
             if(len(rows_array)):
                 request = service.spreadsheets().values().batchGet(
                     spreadsheetId=spreadsheet_id,
-                    ranges = rows_array,
-                    majorDimension = "COLUMNS"
-                ).execute() 
+                    ranges=rows_array,
+                    majorDimension="COLUMNS"
+                ).execute()
                 # pprint(request)
                 value = request.get('valueRanges')
                 for i in range(len(value)):
                     value_temp = value[i].get('values')
                     pprint(len(value_temp))
-                    reply = ""
+                    reply = str(i + 1) + "\n\n"
                     for l in range(len(value_temp)):
-                        reply = reply + str(value_temp[l][0]) + " " + "\n"
+                        reply = reply + str(titles[l]) + ": " + str(value_temp[l][0]) + " " + "\n"
                     bsm(message, reply)
             else:
-                bsm(message, "No match")    
-            
+                bsm(message, "No match")
+
             statement.reset(message)
 
 
@@ -242,10 +256,9 @@ service = build('sheets', 'v4', http=httpAuth)
 result = service.spreadsheets().values().get(
     spreadsheetId=spreadsheet_id,
     range='Лист1!A1:Z1',
-    # dateTimeRenderOption = 'FORMATTED_STRING',
-    # majorDimension = 'DIMENTION_UNSPECIFIED'
 ).execute()
 rows = result.get('values', [])
+pprint(rows)
 # -----Получаем номера полей-------
 global agent_field_num
 global date_table_num
