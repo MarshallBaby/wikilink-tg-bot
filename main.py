@@ -7,6 +7,7 @@ import sys
 import numpy as np
 from numpy import *
 import telebot
+from telebot import types
 import configparser
 import pymysql
 import json
@@ -181,7 +182,12 @@ class Motion:
                         reply = reply + \
                             str(titles[l]) + ": " + \
                             str(value_temp[l][0]) + " " + "\n"
-                    bsm(message, reply)
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton(text="Нажми меня", callback_data="test"))
+                    markup.add(types.InlineKeyboardButton(text="Нажми меня", callback_data="test"))
+                    markup.add(types.InlineKeyboardButton(text="Нажми меня", callback_data="test"))
+                    markup.add(types.InlineKeyboardButton(text="Нажми меня", callback_data="test"))
+                    bot.send_message(message.chat.id, reply, reply_markup=markup)
             else:
                 bsm(message, config['Bot']['no_match_reply'])
 
@@ -383,6 +389,13 @@ def text_reaction(message):
         statement.motion(statement.check(message), message)
     else:
         bsm(message, config['Bot']['sharp_error_reply_text'])
+        
+@bot.callback_query_handler(func=lambda call: True)
+def callback_inline(call):
+    # Если сообщение из чата с ботом
+    if call.message:
+        if call.data == "test":
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Пыщь")
 
 
 bot.polling()
